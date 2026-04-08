@@ -1,0 +1,20 @@
+{
+  "name": "garmin-training-backend",
+  "version": "1.0.0",
+  "description": "Backend proxy para Garmin Connect",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@gooin/garmin-connect": "^1.7.5",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
