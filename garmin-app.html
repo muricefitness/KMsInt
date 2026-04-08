@@ -245,7 +245,7 @@ const $ = id => document.getElementById(id);
 // Auto-detectar URL del backend según entorno
 const _autoBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:3001'
-  : window.location.origin;
+  : 'https://kmsint-production.up.railway.app';
 window.addEventListener('DOMContentLoaded', () => { $('backend-url').value = _autoBase; });
 
 function setStep(n) {
