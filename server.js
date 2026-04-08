@@ -147,6 +147,18 @@ app.get("/strava/token-export", (_req, res) => {
   res.json({ STRAVA_TOKEN_JSON: JSON.stringify(stravaToken) });
 });
 
+// ── Debug config de Strava ────────────────────────────────────────────────────
+app.get("/strava/debug", (_req, res) => {
+  const secret = STRAVA_CLIENT_SECRET;
+  res.json({
+    client_id: STRAVA_CLIENT_ID,
+    client_secret_length: secret?.length,
+    client_secret_preview: secret ? secret.slice(0,4) + "..." + secret.slice(-4) : null,
+    redirect_url: STRAVA_REDIRECT,
+    token_present: !!stravaToken,
+  });
+});
+
 // ── Garmin auth ───────────────────────────────────────────────────────────────
 app.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
