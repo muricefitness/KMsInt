@@ -1192,4 +1192,11 @@ app.get("/app", (_req, res) => {
   }
 });
 
+// ── Arrancar ──────────────────────────────────────────────────────────────────
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`✓ Training Analyzer server running on port ${PORT}`);
+  console.log(`  Health: http://localhost:${PORT}/health`);
+  console.log(`  App:    http://localhost:${PORT}/app`);
+});
+
 // ── Arrancar ──────────────�
