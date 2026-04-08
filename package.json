@@ -16,5 +16,8 @@
   },
   "engines": {
     "node": "18.x"
+  },
+  "overrides": {
+    "axios-cookiejar-support": "4.0.7"
   }
 }
