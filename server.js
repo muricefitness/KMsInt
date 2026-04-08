@@ -23,7 +23,11 @@ const PORT = process.env.PORT || 3001;
 
 // ── Strava config ─────────────────────────────────────────────────────────────
 const STRAVA_CLIENT_ID     = process.env.STRAVA_CLIENT_ID     || "222061";
-const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET || "13ea8e309ac7617a256dc2874eafa3d2f1b67ec3";
+// Ignorar env var si Railway inyecta el placeholder del .env.example
+const _envSecret = process.env.STRAVA_CLIENT_SECRET;
+const STRAVA_CLIENT_SECRET = (_envSecret && _envSecret.length === 40 && !_envSecret.includes('_de_'))
+  ? _envSecret
+  : "13ea8e309ac7617a256dc2874eafa3d2f1b67ec3";
 const STRAVA_REDIRECT      = process.env.STRAVA_REDIRECT_URL || `http://localhost:${PORT}/strava/callback`;
 const STRAVA_TOKEN_FILE    = join(__dirname, ".strava_token.json");
 
