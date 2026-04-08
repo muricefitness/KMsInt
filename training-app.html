@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Training Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --bg:#0e0f11; --s1:#16181c; --s2:#1e2026; --s3:#252830;
+  --b1:rgba(255,255,255,0.07); --b2:rgba(255,255,255,0.13);
+  --text:#f0f0ee; --muted:#6e7180; --faint:#3a3d47;
+  --green:#c8f060; --teal:#60f0c8; --amber:#f0c060; --red:#f06060; --blue:#60a8f0;
+  --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+
+/* Sidebar */
+.sidebar{background:var(--s1);border-right:1px solid var(--b1);padding:1.5rem 1rem;display:flex;flex-direction:column;gap:4px;}
+.brand{font-family:var(--mono);font-size:11px;color:var(--green);letter-spacing:0.1em;margin-bottom:1.5rem;display:flex;align-items:center;gap:8px;}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-item{padding:8px 12px;border-radius:8px;font-size:13px;cursor:pointer;color:var(--muted);transition:all .15s;display:flex;align-items:center;gap:8px;}
+.nav-item:hover{background:var(--s2);color:var(--text);}
+.nav-item.active{background:var(--s2);color:var(--text);border-left:2px solid var(--green);}
+.nav-icon{width:16px;height:16px;border-radius:3px;flex-shrink:0;}
+.sidebar-status{margin-top:auto;border-top:1px solid var(--b1);padding-top:1rem;}
+.status-row{display:flex;align-items:center;gap:8px;font-size:12px;font-family:var(--mono);color:var(--muted);margin-bottom:6px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--faint);}
+.dot.on{background:var(--green);}
+
+/* Main */
+.main{padding:2rem;overflow-y:auto;}
+.page{display:none;} .page.active{display:block;}
+.page-title{font-size:22px;font-weight:300;margin-bottom:0.35rem;letter-spacing:-.02em;}
+.page-sub{font-size:13px;color:var(--muted);margin-bottom:2rem;}
+
+/* Cards */
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:1.25rem;margin-bottom:1rem;}
+.card-title{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+
+/* Metric */
+.metric{background:var(--s2);border-radius:8px;padding:.85rem;border:1px solid var(--b1);}
+.metric .lbl{font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:4px;}
+.metric .val{font-size:24px;font-weight:300;}
+.metric .unit{font-size:11px;color:var(--muted);font-family:var(--mono);}
+
+/* Form */
+.field{margin-bottom:12px;}
+.field label{display:block;font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:5px;}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .15s;}
+.field input:focus,.field select,.field textarea:focus{border-color:var(--b2);}
+.field textarea{resize:vertical;min-height:120px;line-height:1.6;}
+.field select option{background:var(--s2);}
+
+/* Buttons */
+.btn{padding:9px 18px;border-radius:8px;font-size:13px;font-family:var(--mono);cursor:pointer;border:1px solid var(--b2);background:transparent;color:var(--text);transition:all .15s;letter-spacing:.02em;}
+.btn:hover{background:var(--s2);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-green{background:var(--green);color:#0e0f11;border-color:var(--green);font-weight:500;}
+.btn-green:hover{background:#d4f570;border-color:#d4f570;}
+.btn-teal{background:rgba(96,240,200,.12);color:var(--teal);border-color:rgba(96,240,200,.25);}
+.btn-teal:hover{background:rgba(96,240,200,.2);}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem;}
+
+/* Messages */
+.msg{padding:10px 14px;border-radius:8px;font-size:13px;font-family:var(--mono);margin-top:10px;}
+.msg.ok{background:rgba(96,240,200,.08);border:1px solid rgba(96,240,200,.2);color:var(--teal);}
+.msg.err{background:rgba(240,96,96,.08);border:1px solid rgba(240,96,96,.2);color:var(--red);}
+
+/* Activity list */
+.act-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .1s;}
+.act-row:last-child{border-bottom:none;}
+.act-row:hover{background:var(--s2);margin:0 -1.25rem;padding:10px 1.25rem;}
+.act-name{font-size:13px;font-weight:500;}
+.act-date{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;}
+.act-right{text-align:right;}
+.act-dist{font-family:var(--mono);font-size:13px;color:var(--green);}
+.act-hr{font-family:var(--mono);font-size:11px;color:var(--muted);}
+.badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:10px;font-family:var(--mono);margin-right:6px;}
+.badge-run{background:rgba(96,168,240,.15);color:var(--blue);}
+.badge-easy{background:rgba(96,240,200,.12);color:var(--teal);}
+.badge-tempo{background:rgba(240,192,96,.12);color:var(--amber);}
+.badge-interval{background:rgba(240,96,96,.12);color:var(--red);}
+.badge-long{background:rgba(96,168,240,.12);color:var(--blue);}
+.badge-rest{background:var(--s3);color:var(--muted);}
+
+/* Plan del día */
+.plan-card{background:var(--s1);border:1px solid var(--b1);border-radius:12px;padding:1.5rem;margin-bottom:1rem;}
+.plan-type{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.5rem;}
+.plan-title{font-size:20px;font-weight:400;margin-bottom:.5rem;letter-spacing:-.01em;}
+.plan-objective{font-size:14px;color:var(--muted);margin-bottom:1.25rem;line-height:1.6;}
+.plan-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.25rem;}
+.pm{background:var(--s2);border-radius:8px;padding:.75rem;text-align:center;}
+.pm-val{font-family:var(--mono);font-size:16px;font-weight:500;margin-bottom:2px;}
+.pm-lbl{font-size:11px;color:var(--muted);}
+.plan-desc{font-size:13px;color:var(--muted);line-height:1.7;white-space:pre-wrap;}
+.key-metrics{display:flex;gap:8px;flex-wrap:wrap;margin-top:1rem;}
+.km-chip{background:var(--s3);border:1px solid var(--b1);border-radius:20px;padding:4px 12px;font-size:12px;font-family:var(--mono);color:var(--muted);}
+
+/* Strava description */
+.strava-preview{background:var(--s2);border-radius:8px;padding:1rem;font-size:13px;line-height:1.7;color:var(--text);white-space:pre-wrap;min-height:80px;}
+
+/* Loading */
+.loading{display:flex;align-items:center;gap:10px;color:var(--muted);font-family:var(--mono);font-size:13px;padding:.75rem 0;}
+.dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--green);margin:0 2px;animation:blink 1.2s infinite;}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
+.hidden{display:none!important;}
+
+/* Selected activity highlight */
+.act-row.selected{background:var(--s3);margin:0 -1.25rem;padding:10px 1.25rem;border-left:2px solid var(--green);}
+
+.divider{height:1px;background:var(--b1);margin:1.25rem 0;}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <div class="brand"><div class="brand-dot"></div>TRAINING ANALYZER</div>
+  <div class="nav-item active" onclick="showPage('today')" id="nav-today">
+    <div class="nav-icon" style="background:rgba(200,240,96,.2);"></div>Hoy
+  </div>
+  <div class="nav-item" onclick="showPage('analyze')" id="nav-analyze">
+    <div class="nav-icon" style="background:rgba(96,240,200,.2);"></div>Analizar sesión
+  </div>
+  <div class="nav-item" onclick="showPage('annual')" id="nav-annual">
+    <div class="nav-icon" style="background:rgba(200,96,240,.2);"></div>Plan anual
+  </div>
+  <div class="nav-item" onclick="showPage('history')" id="nav-history">
+    <div class="nav-icon" style="background:rgba(96,168,240,.2);"></div>Historial
+  </div>
+  <div class="nav-item" onclick="showPage('settings')" id="nav-settings">
+    <div class="nav-icon" style="background:rgba(240,192,96,.2);"></div>Configuración
+  </div>
+  <div class="sidebar-status">
+    <div class="status-row"><div class="dot" id="dot-garmin"></div><span id="txt-garmin">Garmin: desconectado</span></div>
+    <div class="status-row"><div class="dot" id="dot-strava"></div><span id="txt-strava">Strava: desconectado</span></div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- HOY -->
+  <div class="page active" id="page-today">
+    <div class="page-title">Entrenamiento de hoy</div>
+    <div class="page-sub" id="today-date"></div>
+
+    <div id="adaptation-widget" class="hidden" style="margin-bottom:1rem;">
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;">
+        <div class="metric"><div class="lbl">fitness (CTL)</div><div class="val" id="aw-ctl" style="font-size:20px;">—</div></div>
+        <div class="metric"><div class="lbl">fatiga (ATL)</div><div class="val" id="aw-atl" style="font-size:20px;">—</div></div>
+        <div class="metric"><div class="lbl">forma (TSB)</div><div class="val" id="aw-tsb" style="font-size:20px;">—</div></div>
+        <div class="metric"><div class="lbl">adherencia</div><div class="val" id="aw-adh" style="font-size:20px;">—</div><div class="unit">%</div></div>
+      </div>
+      <div id="aw-state" style="margin-top:8px;font-size:12px;font-family:var(--mono);padding:8px 12px;border-radius:6px;"></div>
+    </div>
+
+    <div id="plan-empty" class="card">
+      <div class="card-title">Sin plan para hoy</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Genera el entrenamiento de mañana basado en tu última sesión de Garmin.</p>
+      <div class="field">
+        <label>Objetivo general</label>
+        <select id="goal-select">
+          <option value="velocidad">Mejorar velocidad y rendimiento</option>
+          <option value="5k">Bajar tiempo en 5K</option>
+          <option value="10k">Bajar tiempo en 10K</option>
+          <option value="medio">Preparar medio maratón</option>
+          <option value="maraton">Preparar maratón</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="generateTomorrowPlan()">Generar entrenamiento de mañana →</button>
+      </div>
+      <div id="gen-msg" class="hidden"></div>
+    </div>
+
+    <div id="plan-display" class="hidden">
+      <div class="plan-card">
+        <div class="plan-type" id="plan-type-badge"></div>
+        <div class="plan-title" id="plan-title"></div>
+        <div class="plan-objective" id="plan-objective"></div>
+        <div id="plan-phase-context" style="display:none;font-size:12px;font-family:var(--mono);color:var(--teal);background:rgba(96,240,200,.08);border:1px solid rgba(96,240,200,.15);border-radius:6px;padding:6px 10px;margin-bottom:0.5rem;"></div>
+        <div id="plan-adaptation-note" style="display:none;font-size:12px;font-family:var(--mono);color:var(--amber);background:rgba(240,192,96,.08);border:1px solid rgba(240,192,96,.15);border-radius:6px;padding:6px 10px;margin-bottom:1rem;"></div>
+        <div class="plan-metrics" id="plan-metrics"></div>
+        <div class="divider"></div>
+        <div class="plan-desc" id="plan-desc"></div>
+        <div class="key-metrics" id="plan-key-metrics"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="regeneratePlan()">Regenerar →</button>
+        <button class="btn btn-teal" onclick="uploadExistingPlanToGarmin()">Subir a Garmin →</button>
+      </div>
+      <div id="upload-garmin-msg" class="hidden"></div>
+    </div>
+  </div>
+
+  <!-- ANALIZAR -->
+  <div class="page" id="page-analyze">
+    <div class="page-title">Analizar sesión</div>
+    <div class="page-sub">Compara lo planificado con lo realizado y publica en Strava</div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">1 · Sesión planificada</div>
+        <div id="planned-empty" style="font-size:13px;color:var(--muted);">No hay plan guardado para hoy. Ve a "Hoy" para generar uno.</div>
+        <div id="planned-summary" class="hidden">
+          <div style="font-size:15px;font-weight:500;margin-bottom:4px;" id="ps-title"></div>
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;" id="ps-obj"></div>
+          <div style="font-family:var(--mono);font-size:12px;color:var(--muted);" id="ps-targets"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">2 · Sesión realizada (Garmin)</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Selecciona la actividad de Garmin correspondiente:</div>
+        <button class="btn btn-teal" onclick="loadGarminActivities()" style="margin-bottom:10px;">Cargar actividades →</button>
+        <div id="garmin-acts-list"></div>
+      </div>
+    </div>
+
+    <div class="card" id="analysis-card">
+      <div class="card-title">3 · Análisis IA + descripción Strava</div>
+      <div id="analysis-empty" style="font-size:13px;color:var(--muted);">Selecciona una actividad de Garmin para continuar.</div>
+      <div id="analysis-content" class="hidden">
+        <div class="loading" id="analysis-loading" style="display:none;">
+          <div class="dots"><span></span><span></span><span></span></div>
+          Analizando sesión y generando descripción...
+        </div>
+        <div class="strava-preview" id="strava-desc" contenteditable="true"></div>
+        <div class="btn-row" id="analysis-btns" style="display:none;">
+          <button class="btn btn-green" onclick="publishToStrava()">Publicar en Strava →</button>
+          <button class="btn" onclick="regenerateAnalysis()">Regenerar →</button>
+          <button class="btn" onclick="copyDescription()">Copiar texto</button>
+        </div>
+        <div id="publish-msg" class="hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAN ANUAL -->
+  <div class="page" id="page-annual">
+    <div class="page-title">Plan anual</div>
+    <div class="page-sub">Macrociclo basado en tu historial + planes semanales adaptativos</div>
+
+    <div class="card" id="annual-setup">
+      <div class="card-title">1 · Descargar historial de Garmin</div>
+      <div class="field">
+        <label>Año a analizar</label>
+        <select id="data-year">
+          <option value="2025" selected>2025</option>
+          <option value="2024">2024</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-teal" onclick="downloadYearData()">Descargar actividades →</button>
+      </div>
+      <div id="download-msg" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">2 · Eventos objetivo</div>
+      <div id="events-list" style="margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" id="event-name" placeholder="Nombre del evento (ej: Maratón Madrid)" style="flex:2;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--text);font-size:13px;" />
+        <input type="date" id="event-date" style="flex:1;padding:8px 10px;background:var(--s2);border:1px solid var(--b1);border-radius:8px;color:var(--text);font-size:13px;" />
+        <button class="btn" onclick="addEvent()">+ Añadir</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">3 · Generar macrociclo anual</div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="generateAnnualPlan()">Generar plan anual con IA →</button>
+      </div>
+      <div id="annual-msg" class="hidden"></div>
+    </div>
+
+    <div id="annual-plan-display" class="hidden">
+      <div class="card">
+        <div class="card-title">Resumen del atleta</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.7;" id="annual-summary"></p>
+        <div style="margin-top:1rem;display:flex;gap:8px;flex-wrap:wrap;" id="annual-tags"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fases del macrociclo</div>
+        <div id="phases-display"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANÁLISIS DETALLADO -->
+  <div class="page" id="page-detail">
+    <div class="page-title">Análisis detallado</div>
+    <div class="page-sub" id="detail-subtitle">Splits · Drift HR · Carga · Zonas</div>
+
+    <div class="grid3" id="detail-metrics-top"></div>
+
+    <div class="grid2" style="margin-top:1rem;">
+      <div class="card">
+        <div class="card-title">Splits por km</div>
+        <div id="splits-display"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribución zonas FC</div>
+        <div id="zones-display"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:0;">
+      <div class="card-title">Drift · Carga · Decoupling</div>
+      <div class="grid3" id="detail-metrics-bottom"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Análisis IA de la sesión</div>
+      <div class="loading" id="detail-loading" style="display:none;">
+        <div class="dots"><span></span><span></span><span></span></div>
+        Analizando sesión en detalle...
+      </div>
+      <div id="detail-analysis" style="font-size:13px;line-height:1.7;white-space:pre-wrap;color:var(--text);"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" onclick="showPage('analyze')">← Volver</button>
+      <button class="btn btn-teal" onclick="useDetailForStrava()">Usar como descripción Strava →</button>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="page" id="page-history">
+    <div class="page-title">Historial de actividades</div>
+    <div class="page-sub">Tus últimas sesiones de Strava con sus descripciones</div>
+    <div class="card">
+      <button class="btn btn-teal" onclick="loadStravaHistory()" style="margin-bottom:1rem;">Cargar desde Strava →</button>
+      <div id="strava-history-list"></div>
+    </div>
+  </div>
+
+  <!-- CONFIGURACIÓN -->
+  <div class="page" id="page-settings">
+    <div class="page-title">Configuración</div>
+    <div class="page-sub">Conecta tus cuentas de Garmin y Strava</div>
+
+    <div class="card">
+      <div class="card-title">Garmin Connect</div>
+      <div class="field"><label>Email</label><input type="email" id="cfg-email" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="cfg-pass" placeholder="••••••••" /></div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="connectGarmin()">Conectar Garmin →</button>
+      </div>
+      <div id="garmin-msg" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Strava</div>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Autoriza la app para leer y editar tus actividades de Strava.</p>
+      <div class="btn-row">
+        <button class="btn btn-teal" onclick="connectStrava()">Conectar con Strava →</button>
+      </div>
+      <div id="strava-msg" class="hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">API Key de Anthropic</div>
+      <div class="field"><label>API Key</label><input type="password" id="cfg-apikey" placeholder="sk-ant-..." /></div>
+      <div class="btn-row">
+        <button class="btn" onclick="saveApiKey()">Guardar →</button>
+      </div>
+      <div id="apikey-msg" class="hidden"></div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// Auto-detect backend URL: en Railway usa el mismo origen; en local usa localhost:3001
+const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? `http://localhost:3001`
+  : window.location.origin;
+const $ = id => document.getElementById(id);
+let selectedGarminActivity = null;
+let currentPlan = null;
+let selectedStravaId = null;
+
+// ── Navegación ─────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  $('page-'+name).classList.add('active');
+  if ($('nav-'+name)) $('nav-'+name).classList.add('active');
+  if (name === 'today') loadTodayPlan();
+  if (name === 'analyze') loadAnalyzePage();
+}
+
+function showMsg(id, msg, isErr) {
+  const el = $(id);
+  if (!el) return;
+  el.className = 'msg ' + (isErr ? 'err' : 'ok');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+// ── Status ──────────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch(`${BASE}/health`);
+    const d = await r.json();
+    $('dot-garmin').className = 'dot' + (d.garminLoggedIn ? ' on' : '');
+    $('txt-garmin').textContent = 'Garmin: ' + (d.garminLoggedIn ? 'conectado' : 'desconectado');
+    $('dot-strava').className = 'dot' + (d.stravaConnected ? ' on' : '');
+    $('txt-strava').textContent = 'Strava: ' + (d.stravaConnected ? 'conectado' : 'desconectado');
+  } catch {}
+}
+
+// ── HOY ─────────────────────────────────────────────────────────────────────
+function loadTodayPlan() {
+  const today = new Date();
+  $('today-date').textContent = today.toLocaleDateString('es-ES', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const tomorrowStr = tomorrow.toISOString().slice(0,10);
+  const saved = JSON.parse(localStorage.getItem('daily_plan')||'{}');
+  if (saved[tomorrowStr]) { currentPlan = saved[tomorrowStr]; renderPlan(currentPlan); }
+  loadAdaptationWidget();
+}
+
+function renderPlan(plan) {
+  if (!plan) return;
+  $('plan-empty').classList.add('hidden');
+  $('plan-display').classList.remove('hidden');
+  const typeColors = {easy:'var(--teal)',tempo:'var(--amber)',interval:'var(--red)',long:'var(--blue)',rest:'var(--muted)'};
+  $('plan-type-badge').textContent = (plan.type?.toUpperCase() || 'ENTRENO') + (plan.phaseName ? ` · ${plan.phaseName.toUpperCase()}` : '');
+  $('plan-type-badge').style.color = typeColors[plan.type] || 'var(--muted)';
+  $('plan-title').textContent = plan.title || '';
+  $('plan-objective').textContent = plan.objective || '';
+
+  const ctxEl = $('plan-phase-context');
+  if (ctxEl) { ctxEl.textContent = plan.phaseContext || ''; ctxEl.style.display = plan.phaseContext ? 'block' : 'none'; }
+
+  const noteEl = $('plan-adaptation-note');
+  if (noteEl) { noteEl.textContent = plan.adaptationNote ? `⚡ ${plan.adaptationNote}` : ''; noteEl.style.display = plan.adaptationNote ? 'block' : 'none'; }
+
+  $('plan-metrics').innerHTML = [
+    {lbl:'distancia',val:plan.targetDistance||'—'},
+    {lbl:'ritmo objetivo',val:plan.targetPace||'—'},
+    {lbl:'FC objetivo',val:plan.targetHr||'—'},
+  ].map(m=>`<div class="pm"><div class="pm-val">${m.val}</div><div class="pm-lbl">${m.lbl}</div></div>`).join('');
+  $('plan-desc').textContent = plan.description || '';
+  $('plan-key-metrics').innerHTML = (plan.keyMetrics||[]).map(k=>`<div class="km-chip">${k}</div>`).join('');
+}
+
+async function loadAdaptationWidget() {
+  try {
+    const r = await fetch(`${BASE}/athlete/adaptation`);
+    const d = await r.json();
+    if (d.error) return;
+    $('adaptation-widget').classList.remove('hidden');
+    $('aw-ctl').textContent = d.ctl ?? '—';
+    $('aw-atl').textContent = d.atl ?? '—';
+    const tsb = d.tsb ?? null;
+    $('aw-tsb').textContent = tsb !== null ? (tsb > 0 ? `+${tsb}` : tsb) : '—';
+    $('aw-tsb').style.color = tsb === null ? 'var(--text)' : tsb > 10 ? 'var(--teal)' : tsb > 0 ? 'var(--green)' : tsb > -10 ? 'var(--amber)' : 'var(--red)';
+    $('aw-adh').textContent = d.adherencePercent ?? '—';
+    const stateColors = { 'muy fresco':'rgba(96,240,200,.12)', 'fresco':'rgba(96,240,200,.08)', 'equilibrado':'rgba(240,192,96,.08)', 'cargado':'rgba(240,96,96,.08)', 'fatigado':'rgba(240,96,96,.15)' };
+    const stateTextColors = { 'muy fresco':'var(--teal)', 'fresco':'var(--teal)', 'equilibrado':'var(--amber)', 'cargado':'var(--red)', 'fatigado':'var(--red)' };
+    const st = $('aw-state');
+    st.style.background = stateColors[d.formState] || 'var(--s2)';
+    st.style.color = stateTextColors[d.formState] || 'var(--muted)';
+    st.textContent = `${d.formState?.toUpperCase()} — ${d.formAdvice}${d.overreachWarning ? ' ⚠️ SEÑAL DE SOBREENTRENAMIENTO' : ''}`;
+  } catch {}
+}
+
+async function generateTomorrowPlan() {
+  const goal = $('goal-select').value;
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Generando...';
+  $('gen-msg').classList.add('hidden');
+  try {
+    const actsR = await fetch(`${BASE}/activities?limit=3`);
+    const actsD = await actsR.json();
+    const lastActivity = actsD.activities?.[0] || null;
+    const r = await fetch(`${BASE}/plan/generate`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ lastActivity, goal, weeksData:{ avgWeeklyKm:51, avgHr:155 } })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const saved = JSON.parse(localStorage.getItem('daily_plan')||'{}');
+    saved[d.date] = d.plan;
+    localStorage.setItem('daily_plan', JSON.stringify(saved));
+    currentPlan = d.plan;
+    renderPlan(d.plan);
+    if (d.garminWorkoutId) {
+      showMsg('gen-msg', `Plan generado y subido a Garmin (workout #${d.garminWorkoutId}) — aparecerá en tu reloj mañana`, false);
+    } else if (d.garminError) {
+      showMsg('gen-msg', `Plan generado. No se pudo subir a Garmin: ${d.garminError}`, true);
+    } else {
+      showMsg('gen-msg', 'Plan generado para mañana', false);
+    }
+  } catch(e) {
+    showMsg('gen-msg', e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generar entrenamiento de mañana →';
+  }
+}
+
+async function uploadExistingPlanToGarmin() {
+  if (!currentPlan) { showMsg('upload-garmin-msg', 'No hay plan cargado.', true); return; }
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Subiendo...';
+  try {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    const r = await fetch(`${BASE}/plan/upload-garmin`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plan: currentPlan, date: tomorrowStr })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showMsg('upload-garmin-msg', `Workout subido a Garmin correctamente (ID: ${d.garminWorkoutId}) — aparece en tu reloj mañana`, false);
+  } catch(e) {
+    showMsg('upload-garmin-msg', 'Error: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Subir a Garmin →';
+  }
+}
+
+function regeneratePlan() {
+  $('plan-display').classList.add('hidden');
+  $('plan-empty').classList.remove('hidden');
+}
+
+// ── ANALIZAR ────────────────────────────────────────────────────────────────
+function loadAnalyzePage() {
+  const today = new Date().toISOString().slice(0,10);
+  const saved = JSON.parse(localStorage.getItem('daily_plan')||'{}');
+  const plan = saved[today];
+  if (plan) {
+    currentPlan = plan;
+    $('planned-empty').classList.add('hidden');
+    $('planned-summary').classList.remove('hidden');
+    $('ps-title').textContent = plan.title;
+    $('ps-obj').textContent = plan.objective;
+    $('ps-targets').textContent = `${plan.targetDistance} · ${plan.targetPace} min/km · ${plan.targetHr}`;
+  } else {
+    $('planned-empty').classList.remove('hidden');
+    $('planned-summary').classList.add('hidden');
+  }
+}
+
+async function loadGarminActivities() {
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Cargando...';
+  try {
+    const r = await fetch(`${BASE}/activities?limit=10`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    const acts = d.activities || [];
+    $('garmin-acts-list').innerHTML = acts.length
+      ? acts.map(a => `
+        <div class="act-row" id="ga-${a.activityId}" onclick="selectGarminActivity(${JSON.stringify(a).replace(/"/g,'&quot;')})">
+          <div><div class="act-name">${a.name}</div><div class="act-date">${a.date}</div></div>
+          <div class="act-right" style="display:flex;align-items:center;gap:8px;"><div><div class="act-dist">${a.distanceKm||'—'} km</div><div class="act-hr">${a.avgHr||'—'} bpm</div></div><button class="btn btn-teal" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();openDetailAnalysis(${JSON.stringify(a).replace(/"/g,'&quot;')})">Detalle →</button></div>
+        </div>`).join('')
+      : '<p style="font-size:13px;color:var(--muted)">Sin actividades. Conecta Garmin en Configuración.</p>';
+  } catch(e) {
+    $('garmin-acts-list').innerHTML = `<p style="font-size:13px;color:var(--red)">${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Cargar actividades →';
+  }
+}
+
+async function selectGarminActivity(activity) {
+  document.querySelectorAll('.act-row').forEach(r => r.classList.remove('selected'));
+  const el = $('ga-'+activity.activityId);
+  if (el) el.classList.add('selected');
+  selectedGarminActivity = activity;
+  $('analysis-empty').classList.add('hidden');
+  $('analysis-content').classList.remove('hidden');
+  $('analysis-loading').style.display = 'flex';
+  $('analysis-btns').style.display = 'none';
+  $('strava-desc').textContent = '';
+  await runAnalysis();
+}
+
+async function runAnalysis() {
+  try {
+    const r = await fetch(`${BASE}/plan/analyze`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ plannedSession: currentPlan, actualActivity: selectedGarminActivity })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $('analysis-loading').style.display = 'none';
+    $('strava-desc').textContent = d.description;
+    $('analysis-btns').style.display = 'flex';
+    const stravaActs = await fetch(`${BASE}/strava/activities?limit=5`);
+    const sd = await stravaActs.json();
+    if (sd.activities?.length) selectedStravaId = sd.activities[0].id;
+  } catch(e) {
+    $('analysis-loading').style.display = 'none';
+    $('strava-desc').textContent = 'Error: ' + e.message;
+    $('analysis-btns').style.display = 'flex';
+  }
+}
+
+async function regenerateAnalysis() {
+  $('analysis-loading').style.display = 'flex';
+  $('analysis-btns').style.display = 'none';
+  $('strava-desc').textContent = '';
+  await runAnalysis();
+}
+
+async function publishToStrava() {
+  if (!selectedStravaId) { showMsg('publish-msg','No se encontró actividad en Strava. Asegúrate de que la sesión ya está sincronizada.',true); return; }
+  const description = $('strava-desc').textContent;
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Publicando...';
+  try {
+    const r = await fetch(`${BASE}/strava/activity/${selectedStravaId}/description`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ description })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showMsg('publish-msg','Descripción publicada en Strava','ok');
+  } catch(e) {
+    showMsg('publish-msg', e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Publicar en Strava →';
+  }
+}
+
+function copyDescription() {
+  navigator.clipboard.writeText($('strava-desc').textContent);
+  event.target.textContent = 'Copiado';
+  setTimeout(() => event.target.textContent = 'Copiar texto', 2000);
+}
+
+// ── PLAN ANUAL ───────────────────────────────────────────────────────────────
+let annualEvents = [];
+
+function addEvent() {
+  const name = $('event-name').value.trim();
+  const date = $('event-date').value;
+  if (!name || !date) return;
+  annualEvents.push({ name, date });
+  $('event-name').value = '';
+  $('event-date').value = '';
+  renderEvents();
+}
+
+function renderEvents() {
+  $('events-list').innerHTML = annualEvents.map((e, i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--b1);font-size:13px;">
+      <span style="color:var(--text);">${e.name}</span>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-family:var(--mono);color:var(--muted);">${e.date}</span>
+        <button class="btn" style="padding:3px 8px;font-size:11px;" onclick="annualEvents.splice(${i},1);renderEvents()">×</button>
+      </div>
+    </div>`).join('');
+}
+
+async function downloadYearData() {
+  const year = $('data-year').value;
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Descargando...';
+  showMsg('download-msg', `Descargando actividades de ${year}... puede tardar 1-2 minutos`, false);
+  try {
+    const r = await fetch(`${BASE}/activities/year?year=${year}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showMsg('download-msg', `✓ ${d.count} actividades de ${year} descargadas y guardadas`, false);
+  } catch(e) {
+    showMsg('download-msg', e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Descargar actividades →';
+  }
+}
+
+async function generateAnnualPlan() {
+  const year = $('data-year').value;
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Generando...';
+  showMsg('annual-msg', 'Analizando historial y generando macrociclo...', false);
+  try {
+    const r = await fetch(`${BASE}/plan/annual`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ year: parseInt(year), events: annualEvents })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    renderAnnualPlan(d.plan);
+    showMsg('annual-msg', 'Plan anual generado', false);
+  } catch(e) {
+    showMsg('annual-msg', e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generar plan anual con IA →';
+  }
+}
+
+function renderAnnualPlan(plan) {
+  $('annual-plan-display').classList.remove('hidden');
+  $('annual-summary').textContent = plan.summary || '';
+
+  // Tags de fortalezas/debilidades
+  const tags = [
+    ...(plan.strengths||[]).map(s => `<span style="background:rgba(96,240,200,.1);color:var(--teal);border:1px solid rgba(96,240,200,.2);padding:3px 10px;border-radius:20px;font-size:12px;font-family:var(--mono);">+ ${s}</span>`),
+    ...(plan.weaknesses||[]).map(w => `<span style="background:rgba(240,96,96,.1);color:var(--red);border:1px solid rgba(240,96,96,.2);padding:3px 10px;border-radius:20px;font-size:12px;font-family:var(--mono);">↑ ${w}</span>`),
+  ];
+  $('annual-tags').innerHTML = tags.join('');
+
+  // Fases
+  const phaseColors = { base:'var(--teal)', development:'var(--amber)', peak:'var(--red)', recovery:'var(--muted)' };
+  const monthNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  $('phases-display').innerHTML = (plan.phases||[]).map(p => `
+    <div style="border-left:3px solid ${phaseColors[p.phase]||'var(--muted)'};padding:1rem 1rem 1rem 1.25rem;margin-bottom:1rem;background:var(--s2);border-radius:0 8px 8px 0;">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+        <div style="font-weight:500;font-size:14px;">${p.name}</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--muted);">${monthNames[p.startMonth]}–${monthNames[p.endMonth]} · ${p.weeklyKmTarget} km/sem · ${p.intensityPercent}% intensidad</div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px;line-height:1.6;">${p.description}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        ${(p.keyWorkouts||[]).map(w => `<span style="background:var(--s3);border:1px solid var(--b1);padding:2px 8px;border-radius:4px;font-size:11px;font-family:var(--mono);color:var(--muted);">${w}</span>`).join('')}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;">
+        ${['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].map((day,i) => {
+          const type = p.weekStructure?.[day] || 'rest';
+          const dayName = ['L','M','X','J','V','S','D'][i];
+          const typeColors2 = {easy:'rgba(96,240,200,.15)',tempo:'rgba(240,192,96,.15)',interval:'rgba(240,96,96,.15)',long:'rgba(96,168,240,.15)',rest:'var(--s3)'};
+          const textColors = {easy:'var(--teal)',tempo:'var(--amber)',interval:'var(--red)',long:'var(--blue)',rest:'var(--muted)'};
+          return `<div style="background:${typeColors2[type]||'var(--s3)'};border-radius:6px;padding:6px 2px;text-align:center;">
+            <div style="font-size:10px;color:var(--muted);font-family:var(--mono);">${dayName}</div>
+            <div style="font-size:9px;font-weight:500;margin-top:2px;color:${textColors[type]||'var(--muted)'};">${type.slice(0,3).toUpperCase()}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── ANÁLISIS DETALLADO ────────────────────────────────────────────────────────
+let currentDetailAnalysis = '';
+let currentDetailActivity = null;
+
+async function openDetailAnalysis(activity) {
+  currentDetailActivity = activity;
+  showPage('detail');
+  $('detail-subtitle').textContent = `${activity.name} · ${activity.date}`;
+  $('detail-metrics-top').innerHTML = '';
+  $('splits-display').innerHTML = '';
+  $('zones-display').innerHTML = '';
+  $('detail-metrics-bottom').innerHTML = '';
+  $('detail-analysis').textContent = '';
+  $('detail-loading').style.display = 'flex';
+
+  try {
+    // Cargar datos detallados
+    const r = await fetch(`${BASE}/activity/${activity.activityId}`);
+    const d = await r.json();
+    renderDetailMetrics(d);
+
+    // Análisis IA
+    const ar = await fetch(`${BASE}/activity/${activity.activityId}/analyze-detail`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ plannedSession: currentPlan })
+    });
+    const ad = await ar.json();
+    $('detail-loading').style.display = 'none';
+    if (ad.analysis) {
+      currentDetailAnalysis = ad.analysis;
+      $('detail-analysis').textContent = ad.analysis;
+    }
+    // Actualizar métricas avanzadas si vienen del analyze
+    if (ad.metrics) renderAdvancedMetrics(ad.metrics);
+  } catch(e) {
+    $('detail-loading').style.display = 'none';
+    $('detail-analysis').textContent = 'Error: ' + e.message;
+  }
+}
+
+function renderDetailMetrics(d) {
+  const act = d.activity || d;
+  const metrics = d.metrics || {};
+
+  $('detail-metrics-top').innerHTML = [
+    { lbl:'distancia', val: act.distance ? (act.distance/1000).toFixed(2) : '—', unit:'km' },
+    { lbl:'ritmo medio', val: act.averageSpeed ? speedToPaceStr(act.averageSpeed) : '—', unit:'min/km' },
+    { lbl:'FC media', val: act.averageHR ? Math.round(act.averageHR) : '—', unit:'bpm' },
+  ].map(m => `<div class="metric"><div class="lbl">${m.lbl}</div><div class="val">${m.val}</div><div class="unit">${m.unit}</div></div>`).join('');
+
+  // Splits
+  if (metrics.splits?.length) {
+    $('splits-display').innerHTML = metrics.splits.map(s => `
+      <div style="display:grid;grid-template-columns:30px 60px 50px 50px;gap:6px;padding:6px 0;border-bottom:1px solid var(--b1);font-size:12px;font-family:var(--mono);">
+        <span style="color:var(--muted);">km${s.lap}</span>
+        <span style="color:var(--green);">${s.pace||'—'}</span>
+        <span style="color:${s.avgHr > 165 ? 'var(--red)' : s.avgHr > 150 ? 'var(--amber)' : 'var(--teal)'};">${s.avgHr||'—'} bpm</span>
+        <span style="color:var(--muted);">${s.cadence||'—'} spm</span>
+      </div>`).join('');
+  } else {
+    $('splits-display').innerHTML = '<p style="font-size:12px;color:var(--muted);">Sin datos de splits disponibles</p>';
+  }
+
+  // Zonas
+  renderAdvancedMetrics(metrics);
+}
+
+function renderAdvancedMetrics(metrics) {
+  // Zonas FC
+  if (metrics.hrZones) {
+    const zColors = { z1:'var(--teal)', z2:'#639922', z3:'var(--amber)', z4:'#D85A30', z5:'var(--red)' };
+    $('zones-display').innerHTML = Object.entries(metrics.hrZones).map(([z, pct]) => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--b1);">
+        <span style="font-family:var(--mono);font-size:12px;min-width:25px;color:${zColors[z]||'var(--muted)'};">${z.toUpperCase()}</span>
+        <div style="flex:1;background:var(--s3);border-radius:3px;height:6px;">
+          <div style="width:${pct}%;background:${zColors[z]||'var(--muted)'};height:6px;border-radius:3px;"></div>
+        </div>
+        <span style="font-family:var(--mono);font-size:12px;color:var(--muted);min-width:35px;text-align:right;">${pct}%</span>
+      </div>`).join('');
+  }
+
+  // Métricas avanzadas
+  $('detail-metrics-bottom').innerHTML = [
+    { lbl:'TRIMP (carga)', val: metrics.trimp || '—', sub: metrics.loadCategory || '' },
+    { lbl:'Drift FC', val: metrics.hrDrift !== undefined ? `+${metrics.hrDrift}bpm` : '—', sub: metrics.hrDriftPercent !== undefined ? `${metrics.hrDriftPercent}%` : '' },
+    { lbl:'Decoupling aer.', val: metrics.aerobicDecoupling !== undefined ? `${metrics.aerobicDecoupling}%` : '—', sub: metrics.decouplingQuality || '' },
+  ].map(m => `
+    <div class="metric">
+      <div class="lbl">${m.lbl}</div>
+      <div class="val" style="font-size:18px;">${m.val}</div>
+      <div class="unit">${m.sub}</div>
+    </div>`).join('');
+}
+
+function speedToPaceStr(mps) {
+  if (!mps || mps <= 0) return '—';
+  const spk = 1000 / mps;
+  return `${Math.floor(spk/60)}:${String(Math.round(spk%60)).padStart(2,'0')}`;
+}
+
+function useDetailForStrava() {
+  if (!currentDetailAnalysis) return;
+  showPage('analyze');
+  $('analysis-content').classList.remove('hidden');
+  $('analysis-empty').classList.add('hidden');
+  $('strava-desc').textContent = currentDetailAnalysis;
+  $('analysis-btns').style.display = 'flex';
+}
+
+// ── HISTORIAL ───────────────────────────────────────────────────────────────
+async function loadStravaHistory() {
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Cargando...';
+  try {
+    const r = await fetch(`${BASE}/strava/activities?limit=15`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    $('strava-history-list').innerHTML = (d.activities||[]).map(a => `
+      <div style="padding:12px 0;border-bottom:1px solid var(--b1);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <div><span style="font-size:14px;font-weight:500;">${a.name}</span> <span style="font-size:11px;color:var(--muted);font-family:var(--mono);">${a.date}</span></div>
+          <div style="font-family:var(--mono);font-size:13px;color:var(--green);">${a.distanceKm} km · ${a.avgPace||'—'} min/km</div>
+        </div>
+        ${a.description ? `<div style="font-size:12px;color:var(--muted);line-height:1.6;background:var(--s2);padding:8px 10px;border-radius:6px;">${a.description}</div>` : `<div style="font-size:12px;color:var(--faint);font-family:var(--mono);">sin descripción</div>`}
+      </div>`).join('') || '<p style="color:var(--muted);font-size:13px;">Sin actividades. Conecta Strava en Configuración.</p>';
+  } catch(e) {
+    $('strava-history-list').innerHTML = `<p style="color:var(--red);font-size:13px;">${e.message}</p>`;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Cargar desde Strava →';
+  }
+}
+
+// ── CONFIGURACIÓN ───────────────────────────────────────────────────────────
+async function connectGarmin() {
+  const email = $('cfg-email').value.trim();
+  const pass = $('cfg-pass').value;
+  if (!email||!pass) { showMsg('garmin-msg','Introduce email y contraseña.',true); return; }
+  const btn = event.target; btn.disabled=true; btn.textContent='Conectando...';
+  try {
+    const r = await fetch(`${BASE}/auth/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showMsg('garmin-msg',`Conectado como ${d.displayName}`,'ok');
+    checkStatus();
+  } catch(e) { showMsg('garmin-msg',e.message,true); }
+  finally { btn.disabled=false; btn.textContent='Conectar Garmin →'; }
+}
+
+function connectStrava() {
+  const popup = window.open(`${BASE}/strava/auth`,'strava_auth','width=600,height=700');
+  window.addEventListener('message', function handler(e) {
+    if (e.data?.stravaOk) {
+      showMsg('strava-msg',`Strava conectado — bienvenido ${e.data.name}`,'ok');
+      checkStatus();
+      window.removeEventListener('message', handler);
+    } else if (e.data?.stravaError) {
+      showMsg('strava-msg','Error: '+e.data.stravaError,true);
+      window.removeEventListener('message', handler);
+    }
+  });
+}
+
+async function saveApiKey() {
+  const key = $('cfg-apikey').value.trim();
+  if (!key) { showMsg('apikey-msg','Introduce la API key.',true); return; }
+  try {
+    const r = await fetch(`${BASE}/config/apikey`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apiKey:key})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error||'Error');
+    showMsg('apikey-msg','API key guardada','ok');
+  } catch(e) { showMsg('apikey-msg',e.message,true); }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+checkStatus();
+setInterval(checkStatus, 30000);
+loadTodayPlan();
+</script>
+</body>
+</html>
