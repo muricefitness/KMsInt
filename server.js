@@ -28,7 +28,10 @@ const STRAVA_REDIRECT      = process.env.STRAVA_REDIRECT_URL || `http://localhos
 const STRAVA_TOKEN_FILE    = join(__dirname, ".strava_token.json");
 
 let stravaToken = null;
-if (existsSync(STRAVA_TOKEN_FILE)) {
+// Prioridad: variable de entorno (persiste entre redeploys en Railway)
+if (process.env.STRAVA_TOKEN_JSON) {
+  try { stravaToken = JSON.parse(process.env.STRAVA_TOKEN_JSON); } catch {}
+} else if (existsSync(STRAVA_TOKEN_FILE)) {
   try { stravaToken = JSON.parse(readFileSync(STRAVA_TOKEN_FILE, "utf8")); } catch {}
 }
 
@@ -136,6 +139,12 @@ async function refreshStravaToken() {
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", garminLoggedIn, stravaConnected: !!stravaToken, time: new Date().toISOString() });
+});
+
+// ── Exportar token de Strava (para copiarlo a Railway Variables) ──────────────
+app.get("/strava/token-export", (_req, res) => {
+  if (!stravaToken) return res.status(404).json({ error: "No hay token de Strava" });
+  res.json({ STRAVA_TOKEN_JSON: JSON.stringify(stravaToken) });
 });
 
 // ── Garmin auth ───────────────────────────────────────────────────────────────
