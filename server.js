@@ -460,6 +460,10 @@ app.get("/strava/activities", async (req, res) => {
       headers: { Authorization: `Bearer ${token.access_token}` },
     });
     const acts = await r.json();
+    if (!Array.isArray(acts)) {
+      const msg = acts?.message || acts?.errors?.[0]?.field || JSON.stringify(acts);
+      return res.status(401).json({ error: "Strava: " + msg });
+    }
     res.json({ activities: acts.map(a => ({
       id: a.id,
       name: a.name,
