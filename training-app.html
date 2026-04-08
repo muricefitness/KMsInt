@@ -381,10 +381,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </div>
 
 <script>
-// Auto-detect backend URL: en Railway usa el mismo origen; en local usa localhost:3001
+// Auto-detect backend URL
 const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? `http://localhost:3001`
-  : window.location.origin;
+  : 'https://kmsint-production.up.railway.app';
 const $ = id => document.getElementById(id);
 let selectedGarminActivity = null;
 let currentPlan = null;
