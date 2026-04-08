@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+
+# Archivos de sesión y tokens (datos sensibles - NO subir)
+.strava_token.json
+.garmin_session.json
+
+# Caché de actividades (datos grandes - regenerables)
+.activities_*.json
+
+# Plan diario (dato en tiempo real)
+.daily_plan.json
+
+# Plan anual (dato local)
+.annual_plan_2026.json
+
+# Archivos zip
+files.zip
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
