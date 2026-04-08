@@ -20,3 +20,455 @@
     --mono: 'DM Mono', monospace;
     --sans: 'DM Sans', sans-serif;
   }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  .app { max-width: 780px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+
+  header { margin-bottom: 2.5rem; }
+  .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .logo-text { font-family: var(--mono); font-size: 13px; color: var(--accent); letter-spacing: 0.1em; }
+  h1 { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; color: var(--text); }
+  h1 span { color: var(--accent); font-weight: 500; }
+
+  .steps { display: flex; gap: 0; margin-bottom: 2rem; border-bottom: 1px solid var(--border); }
+  .step { padding: 10px 20px 10px 0; font-size: 12px; font-family: var(--mono); color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: default; letter-spacing: 0.05em; }
+  .step.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .step.done { color: var(--accent2); border-bottom-color: var(--accent2); }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1rem; }
+  .card-title { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.2rem; }
+
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+  .field input, .field select {
+    width: 100%; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px; font-family: var(--sans);
+    outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--border2); }
+  .field select option { background: var(--surface2); }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 1.2rem; }
+  .btn {
+    padding: 10px 20px; border-radius: 8px; font-size: 13px; font-family: var(--mono);
+    cursor: pointer; border: 1px solid var(--border2); background: transparent;
+    color: var(--text); transition: all 0.15s; letter-spacing: 0.03em;
+  }
+  .btn:hover { background: var(--surface2); border-color: var(--text); }
+  .btn-primary { background: var(--accent); color: #0e0f11; border-color: var(--accent); font-weight: 500; }
+  .btn-primary:hover { background: #d4f570; border-color: #d4f570; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .msg { margin-top: 12px; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-family: var(--mono); }
+  .msg.ok { background: rgba(96,240,200,0.08); border: 1px solid rgba(96,240,200,0.2); color: var(--accent2); }
+  .msg.err { background: rgba(240,96,96,0.08); border: 1px solid rgba(240,96,96,0.2); color: var(--danger); }
+
+  .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.2rem; }
+  .metric { background: var(--surface2); border-radius: 8px; padding: 1rem; border: 1px solid var(--border); }
+  .metric .lbl { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-bottom: 6px; }
+  .metric .val { font-size: 26px; font-weight: 300; color: var(--text); }
+  .metric .unit { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+  .act-list { margin-top: 4px; }
+  .act-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .act-row:last-child { border-bottom: none; }
+  .act-name { color: var(--text); }
+  .act-date { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .act-stats { text-align: right; }
+  .act-dist { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+  .act-hr { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 0.75rem 0; }
+  .dc { border-radius: 8px; padding: 10px 4px; text-align: center; border: 1px solid var(--border); background: var(--surface2); }
+  .dc .dn { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .dc .dt { font-size: 10px; font-weight: 500; margin-top: 4px; }
+  .dc.easy { border-color: rgba(96,240,200,0.3); } .dc.easy .dt { color: var(--accent2); }
+  .dc.tempo { border-color: rgba(240,200,96,0.3); } .dc.tempo .dt { color: #f0c860; }
+  .dc.interval { border-color: rgba(240,96,96,0.3); } .dc.interval .dt { color: var(--danger); }
+  .dc.long { border-color: rgba(200,240,96,0.3); } .dc.long .dt { color: var(--accent); }
+  .dc.rest .dt { color: var(--muted); }
+
+  #ai-out {
+    font-family: var(--mono); font-size: 13px; line-height: 1.8;
+    color: var(--text); white-space: pre-wrap;
+    border-top: 1px solid var(--border); padding-top: 1rem; margin-top: 1rem;
+  }
+
+  .loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-family: var(--mono); font-size: 13px; padding: 1rem 0; }
+  .dots span { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin: 0 2px; animation: blink 1.2s infinite; }
+  .dots span:nth-child(2){animation-delay:.2s} .dots span:nth-child(3){animation-delay:.4s}
+  @keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
+
+  .hidden { display: none !important; }
+
+  .note { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 6px; }
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-family: var(--mono); background: rgba(200,240,96,0.1); color: var(--accent); border: 1px solid rgba(200,240,96,0.2); margin-right: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      <span class="logo-text">GARMIN TRAINING ANALYZER</span>
+    </div>
+    <h1>Tu plan de entreno<br><span>personalizado con IA</span></h1>
+  </header>
+
+  <div class="steps">
+    <div class="step active" id="s1">01 / CONECTAR</div>
+    <div class="step" id="s2">02 / ANALIZAR</div>
+    <div class="step" id="s3">03 / PLAN IA</div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div id="step1">
+    <div class="card">
+      <div class="card-title">Servidor backend</div>
+      <div class="field">
+        <label>URL del servidor (debe estar corriendo con npm start)</label>
+        <input type="text" id="backend-url" />
+      </div>
+      <button class="btn" onclick="checkHealth()">Probar conexión →</button>
+      <div id="health-msg" class="hidden"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Credenciales Garmin Connect</div>
+      <div class="field"><label>Email</label><input type="email" id="gc-email" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="gc-pass" placeholder="••••••••" /></div>
+      <div class="field">
+        <label>Deporte principal</label>
+        <select id="sport-sel">
+          <option value="running">Carrera a pie</option>
+          <option value="cycling">Ciclismo</option>
+          <option value="swimming">Natación</option>
+          <option value="triathlon">Triatlón</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Período de análisis</label>
+        <select id="weeks-sel">
+          <option value="4">Últimas 4 semanas</option>
+          <option value="8" selected>Últimas 8 semanas</option>
+          <option value="12">Últimas 12 semanas</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="login-btn" onclick="doLogin()">Conectar con Garmin →</button>
+      </div>
+      <div id="login-msg" class="hidden"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2 -->
+  <div id="step2" class="hidden">
+    <div class="card">
+      <div class="card-title" id="stats-title">Resumen de actividad</div>
+      <div class="metrics">
+        <div class="metric"><div class="lbl">actividades</div><div class="val" id="m-acts">—</div></div>
+        <div class="metric"><div class="lbl">distancia total</div><div class="val" id="m-dist">—</div><div class="unit">km</div></div>
+        <div class="metric"><div class="lbl">horas totales</div><div class="val" id="m-time">—</div><div class="unit">h</div></div>
+        <div class="metric"><div class="lbl">FC media</div><div class="val" id="m-hr">—</div><div class="unit">bpm</div></div>
+        <div class="metric"><div class="lbl">VO2max</div><div class="val" id="m-vo2">—</div></div>
+        <div class="metric"><div class="lbl">km / semana</div><div class="val" id="m-wkly">—</div></div>
+      </div>
+      <div class="card-title">Últimas actividades</div>
+      <div class="act-list" id="acts-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Configurar plan</div>
+      <div class="field">
+        <label>Objetivo</label>
+        <select id="goal-sel">
+          <option value="5k">Mejorar 5K</option>
+          <option value="10k">Mejorar 10K</option>
+          <option value="half">Medio maratón</option>
+          <option value="marathon">Maratón</option>
+          <option value="speed" selected>Velocidad general</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Duración del plan</label>
+        <select id="plan-wks">
+          <option value="4">4 semanas</option>
+          <option value="8" selected>8 semanas</option>
+          <option value="12">12 semanas</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Días de entrenamiento por semana</label>
+        <select id="days-wk">
+          <option value="3">3 días</option>
+          <option value="4" selected>4 días</option>
+          <option value="5">5 días</option>
+          <option value="6">6 días</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="generatePlan()">Generar plan con IA →</button>
+        <button class="btn" onclick="exportStats()">Exportar datos →</button>
+        <button class="btn" onclick="setStep(1)">← Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3 -->
+  <div id="step3" class="hidden">
+    <div class="card">
+      <div class="card-title">Semana tipo del plan</div>
+      <div class="week-grid" id="week-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Plan generado por IA</div>
+      <div class="loading" id="plan-loading">
+        <div class="dots"><span></span><span></span><span></span></div>
+        Analizando datos reales y generando plan personalizado...
+      </div>
+      <div id="ai-out" class="hidden"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="setStep(2)">← Ajustar parámetros</button>
+      <button class="btn" onclick="exportPlan()">Exportar .txt →</button>
+    </div>
+  </div>
+
+</div>
+<script>
+let stats = null;
+const $ = id => document.getElementById(id);
+
+// Auto-detectar URL del backend según entorno
+const _autoBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+  ? 'http://localhost:3001'
+  : window.location.origin;
+window.addEventListener('DOMContentLoaded', () => { $('backend-url').value = _autoBase; });
+
+function setStep(n) {
+  ['step1','step2','step3'].forEach((id,i) => {
+    $(id).classList.toggle('hidden', i !== n-1);
+    const s = $('s'+(i+1));
+    s.className = 'step' + (i+1<n?' done':i+1===n?' active':'');
+  });
+}
+
+function showMsg(id, msg, isErr) {
+  const el = $(id);
+  el.className = 'msg ' + (isErr ? 'err' : 'ok');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+function getBase() { return $('backend-url').value.trim().replace(/\/$/, ''); }
+
+async function checkHealth() {
+  const base = getBase();
+  try {
+    const r = await fetch(`${base}/health`);
+    const d = await r.json();
+    showMsg('health-msg', `Servidor activo · ${d.loggedIn ? 'sesión activa' : 'sin sesión'}`, false);
+  } catch {
+    showMsg('health-msg', `No se pudo conectar con ${base}. Comprueba que el servidor está corriendo con "npm start".`, true);
+  }
+}
+
+async function doLogin() {
+  const base = getBase();
+  const email = $('gc-email').value.trim();
+  const pass = $('gc-pass').value;
+  if (!email || !pass) { showMsg('login-msg', 'Introduce email y contraseña.', true); return; }
+
+  const btn = $('login-btn');
+  btn.textContent = 'Conectando...';
+  btn.disabled = true;
+  $('login-msg').classList.add('hidden');
+
+  try {
+    const r = await fetch(`${base}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Error de autenticación');
+    showMsg('login-msg', `Conectado como ${d.displayName}`, false);
+    await loadStats();
+  } catch(e) {
+    showMsg('login-msg', e.message, true);
+  } finally {
+    btn.textContent = 'Conectar con Garmin →';
+    btn.disabled = false;
+  }
+}
+
+async function loadStats() {
+  const base = getBase();
+  const sport = $('sport-sel').value;
+  const weeks = $('weeks-sel').value;
+  try {
+    const r = await fetch(`${base}/stats?weeks=${weeks}&sport=${sport}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    stats = d;
+    populateStats(d, weeks, sport);
+    setStep(2);
+  } catch(e) {
+    showMsg('login-msg', 'Login OK pero error al cargar estadísticas: ' + e.message, true);
+  }
+}
+
+function populateStats(d, weeks, sport) {
+  $('stats-title').textContent = `${sport} · últimas ${weeks} semanas`;
+  $('m-acts').textContent = d.activitiesCount;
+  $('m-dist').textContent = d.totalDistanceKm;
+  $('m-time').textContent = d.totalHours;
+  $('m-hr').textContent = d.avgHr || '—';
+  $('m-vo2').textContent = d.vo2max || '—';
+  $('m-wkly').textContent = d.weeklyVolume?.length ? Math.round(d.totalDistanceKm / d.weeklyVolume.length) : '—';
+
+  const acts = d.recentActivities || [];
+  $('acts-list').innerHTML = acts.length
+    ? acts.slice(0,8).map(a => `
+      <div class="act-row">
+        <div><div class="act-name">${a.name}</div><div class="act-date">${a.date}</div></div>
+        <div class="act-stats">
+          <div class="act-dist">${a.distanceKm ? a.distanceKm+' km' : a.durationFormatted}</div>
+          ${a.avgHr ? `<div class="act-hr">${a.avgHr} bpm</div>` : ''}
+        </div>
+      </div>`).join('')
+    : '<p style="font-size:13px;color:var(--muted);font-family:var(--mono)">Sin actividades en este período.</p>';
+}
+
+function buildWeekGrid(days) {
+  const names = ['L','M','X','J','V','S','D'];
+  const schedules = {
+    3:['easy','rest','rest','tempo','rest','long','rest'],
+    4:['easy','rest','interval','tempo','rest','long','rest'],
+    5:['easy','tempo','rest','interval','easy','long','rest'],
+    6:['easy','tempo','interval','easy','rest','long','easy']
+  };
+  const labels = {easy:'Suave',tempo:'Tempo',interval:'Series',long:'Largo',rest:'Descanso'};
+  const sched = schedules[days] || schedules[4];
+  $('week-grid').innerHTML = names.map((n,i) => `
+    <div class="dc ${sched[i]}">
+      <div class="dn">${n}</div>
+      <div class="dt">${labels[sched[i]]}</div>
+    </div>`).join('');
+}
+
+async function generatePlan() {
+  const goal = $('goal-sel').value;
+  const planWks = $('plan-wks').value;
+  const daysWk = parseInt($('days-wk').value);
+  buildWeekGrid(daysWk);
+  setStep(3);
+
+  const goalMap = {
+    '5k':'mejorar el tiempo en 5K','10k':'mejorar el tiempo en 10K',
+    'half':'preparar un medio maratón','marathon':'preparar un maratón',
+    'speed':'aumentar la velocidad y rendimiento general'
+  };
+
+  const s = stats || {};
+  const prompt = `Eres un entrenador de running y triatlón de élite. Tienes los datos REALES de Garmin Connect del atleta. Crea un plan de entrenamiento personalizado y muy específico.
+
+DATOS REALES DEL ATLETA (extraídos de Garmin Connect):
+- Deporte: ${s.sport || 'running'}
+- Período analizado: ${s.periodWeeks || 8} semanas
+- Total actividades: ${s.activitiesCount || 0}
+- Distancia total: ${s.totalDistanceKm || 0} km
+- Horas totales: ${s.totalHours || 0} h
+- FC media: ${s.avgHr ? s.avgHr + ' bpm' : 'no disponible'}
+- VO2max estimado: ${s.vo2max || 'no disponible'}
+- Volumen semanal medio: ${s.weeklyVolume?.length ? Math.round(s.totalDistanceKm / s.weeklyVolume.length) : 'no disponible'} km/semana
+- Actividades recientes: ${(s.recentActivities||[]).slice(0,5).map(a=>`${a.name} ${a.distanceKm}km${a.avgHr?' '+a.avgHr+'bpm':''}`).join(', ')}
+
+OBJETIVO: ${goalMap[goal]}
+DURACIÓN: ${planWks} semanas
+DÍAS/SEMANA: ${daysWk} días
+
+Genera el plan con estas secciones:
+1. DIAGNÓSTICO DEL NIVEL ACTUAL — analiza los datos reales con números específicos
+2. ZONAS DE FC PERSONALIZADAS — Z1-Z5 basadas en la FC media real
+3. ESTRUCTURA SEMANAL TIPO — describe cada sesión con duración, distancia y zona objetivo
+4. PROGRESIÓN POR FASES — 3 fases en ${planWks} semanas con volumen e intensidad
+5. SESIONES CLAVE DETALLADAS — 3-4 entrenamientos específicos con series y ritmos en min/km
+6. RECOMENDACIONES PERSONALIZADAS — basadas en los datos reales`;
+
+  $('plan-loading').style.display = 'flex';
+  $('ai-out').classList.add('hidden');
+  $('ai-out').textContent = '';
+
+  try {
+    const r = await fetch(`${getBase()}/generate-plan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stats,
+        goal,
+        planWeeks: planWks,
+        daysPerWeek: daysWk
+      })
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Error del servidor');
+    const text = data.plan || 'No se pudo generar el plan.';
+    $('plan-loading').style.display = 'none';
+    const out = $('ai-out');
+    out.classList.remove('hidden');
+    out.textContent = '';
+    let i = 0;
+    const iv = setInterval(() => { out.textContent += text[i]||''; i++; if(i>=text.length) clearInterval(iv); }, 8);
+  } catch(e) {
+    $('plan-loading').style.display = 'none';
+    $('ai-out').classList.remove('hidden');
+    $('ai-out').textContent = 'Error: ' + e.message;
+  }
+}
+
+function exportStats() {
+  if (!stats) return;
+  const lines = [
+    `DATOS GARMIN CONNECT — EXPORTADO ${new Date().toLocaleDateString('es-ES')}`,
+    `================================================`,
+    `Deporte: ${stats.sport}`,
+    `Período: ${stats.periodWeeks} semanas`,
+    `Actividades: ${stats.activitiesCount}`,
+    `Distancia total: ${stats.totalDistanceKm} km`,
+    `Horas totales: ${stats.totalHours} h`,
+    `FC media: ${stats.avgHr || '—'} bpm`,
+    `VO2max: ${stats.vo2max || '—'}`,
+    `Km/semana media: ${stats.weeklyVolume?.length ? Math.round(stats.totalDistanceKm / stats.weeklyVolume.length) : '—'}`,
+    ``,
+    `VOLUMEN SEMANAL`,
+    `------------------------------------------------`,
+    ...(stats.weeklyVolume || []).map(w => `${w.week}: ${w.km} km`),
+    ``,
+    `ACTIVIDADES RECIENTES`,
+    `------------------------------------------------`,
+    ...(stats.recentActivities || []).map(a =>
+      `${a.date} | ${a.name} | ${a.distanceKm || '—'} km | ${a.avgHr || '—'} bpm | ${a.durationFormatted}`
+    )
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'garmin-datos.txt';
+  a.click();
+}
+
+function exportPlan() {
+  const text = $('ai-out').textContent;
+  if (!text) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], {type:'text/plain'}));
+  a.download = 'plan-entrenamiento-garmin.txt';
+  a.click();
+}
+</script>
+</body>
+</html>
