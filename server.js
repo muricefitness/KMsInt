@@ -10,7 +10,8 @@
 
 import express from "express";
 import cors from "cors";
-import { GarminConnect } from "@gooin/garmin-connect";
+import _garminPkg from "@gooin/garmin-connect";
+const { GarminConnect } = _garminPkg;
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -1191,10 +1192,4 @@ app.get("/app", (_req, res) => {
   }
 });
 
-// ── Arrancar ──────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n✅  Training Analyzer corriendo en http://localhost:${PORT}`);
-  console.log(`    App principal:    http://localhost:${PORT}/app`);
-  console.log(`    Strava OAuth:     http://localhost:${PORT}/strava/auth`);
-  console.log(`    Health check:     http://localhost:${PORT}/health\n`);
-});
+// ── Arrancar ──────────────�
