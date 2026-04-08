@@ -448,7 +448,12 @@ app.get("/strava/callback", async (req, res) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client_id: STRAVA_CLIENT_ID, client_secret: STRAVA_CLIENT_SECRET, code, grant_type: "authorization_code" }),
     });
-    stravaToken = await r.json();
+    const tokenData = await r.json();
+    if (!tokenData.access_token) {
+      const errMsg = tokenData.message || JSON.stringify(tokenData);
+      return res.send(`<script>window.opener.postMessage({stravaError:'${errMsg}'}, '*'); window.close();</script>`);
+    }
+    stravaToken = tokenData;
     writeFileSync(STRAVA_TOKEN_FILE, JSON.stringify(stravaToken, null, 2));
     const name = stravaToken.athlete?.firstname || "atleta";
     res.send(`<script>window.opener.postMessage({stravaOk:true, name:'${name}'}, '*'); window.close();</script>`);
