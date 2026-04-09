@@ -141,6 +141,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
   </div>
   <div class="sidebar-status">
     <div class="status-row"><div class="dot" id="dot-garmin"></div><span id="txt-garmin">Garmin: desconectado</span></div>
+    <div class="status-row"><div class="dot" id="dot-coros"></div><span id="txt-coros">COROS: desconectado</span></div>
     <div class="status-row"><div class="dot" id="dot-strava"></div><span id="txt-strava">Strava: desconectado</span></div>
   </div>
 </aside>
@@ -359,6 +360,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     </div>
 
     <div class="card">
+      <div class="card-title">COROS</div>
+      <div class="field"><label>Email</label><input type="email" id="coros-email" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="coros-pass" placeholder="••••••••" /></div>
+      <div class="btn-row">
+        <button class="btn btn-green" onclick="connectCoros()">Conectar COROS →</button>
+      </div>
+      <div id="coros-msg" class="hidden"></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">Strava</div>
       <p style="font-size:13px;color:var(--muted);margin-bottom:1rem;">Autoriza la app para leer y editar tus actividades de Strava.</p>
       <div class="btn-row">
@@ -415,6 +426,8 @@ async function checkStatus() {
     const d = await r.json();
     $('dot-garmin').className = 'dot' + (d.garminLoggedIn ? ' on' : '');
     $('txt-garmin').textContent = 'Garmin: ' + (d.garminLoggedIn ? 'conectado' : 'desconectado');
+    $('dot-coros').className = 'dot' + (d.corosLoggedIn ? ' on' : '');
+    $('txt-coros').textContent = 'COROS: ' + (d.corosLoggedIn ? 'conectado' : 'desconectado');
     $('dot-strava').className = 'dot' + (d.stravaConnected ? ' on' : '');
     $('txt-strava').textContent = 'Strava: ' + (d.stravaConnected ? 'conectado' : 'desconectado');
   } catch {}
@@ -885,6 +898,21 @@ async function connectGarmin() {
     checkStatus();
   } catch(e) { showMsg('garmin-msg',e.message,true); }
   finally { btn.disabled=false; btn.textContent='Conectar Garmin →'; }
+}
+
+async function connectCoros() {
+  const email = $('coros-email').value.trim();
+  const pass = $('coros-pass').value;
+  if (!email||!pass) { showMsg('coros-msg','Introduce email y contraseña.',true); return; }
+  const btn = event.target; btn.disabled=true; btn.textContent='Conectando...';
+  try {
+    const r = await fetch(`${BASE}/coros/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error);
+    showMsg('coros-msg','COROS conectado','ok');
+    checkStatus();
+  } catch(e) { showMsg('coros-msg',e.message,true); }
+  finally { btn.disabled=false; btn.textContent='Conectar COROS →'; }
 }
 
 function connectStrava() {
