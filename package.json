@@ -11,7 +11,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
     "@gooin/garmin-connect": "^1.7.5",
-    "coros-connect": "^1.0.0",
+    "coros-connect": "github:jmn8718/coros-connect",
     "cors": "^2.8.5",
     "express": "^4.19.2"
   },
