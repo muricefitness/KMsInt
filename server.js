@@ -203,10 +203,10 @@ app.post("/auth/login", async (req, res) => {
       return res.json({ ok: true, displayName: email });
     }
     garminLoggedIn = false;
-    let msg = "Error de autenticación con Garmin Connect";
+    let msg = err.message || "Error desconocido";
     if (err.message?.toLowerCase().includes("429")) msg = "Demasiados intentos. Espera 30 minutos.";
     else if (err.message?.toLowerCase().includes("invalid")) msg = "Credenciales incorrectas";
-    res.status(401).json({ error: msg });
+    res.status(401).json({ error: msg, raw: err.message });
   }
 });
 app.get("/auth/status", (_req, res) => res.json({ loggedIn: garminLoggedIn }));
