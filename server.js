@@ -13,7 +13,13 @@ import cors from "cors";
 import _garminPkg from "@gooin/garmin-connect";
 const { GarminConnect } = _garminPkg;
 import * as _corosPkg from "coros-connect";
-const CorosConnect = _corosPkg.CorosConnect || _corosPkg.default || _corosPkg;
+// Inspeccionar estructura real del modulo para debug
+console.log("coros-connect exports:", Object.keys(_corosPkg));
+const _corosAny = _corosPkg;
+const CorosConnect = (typeof _corosAny.default === 'function' && _corosAny.default) ||
+                     (typeof _corosAny.CorosConnect === 'function' && _corosAny.CorosConnect) ||
+                     (typeof _corosAny.Client === 'function' && _corosAny.Client) ||
+                     (typeof _corosAny.createClient === 'function' ? null : null); // factory pattern
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -94,8 +100,16 @@ tryRestoreGarminSession();
 
 // ── COROS client ──────────────────────────────────────────────────────────────
 const COROS_TOKEN_FILE = join(__dirname, ".coros_token.json");
-const coros = new CorosConnect();
+// Instanciar con seguridad — si el modulo no es un constructor, usar factory o deshabilitar
+let coros = null;
 let corosLoggedIn = false;
+if (typeof CorosConnect === 'function') {
+  try { coros = new CorosConnect(); } catch(e) { console.warn("COROS init error:", e.message); }
+} else if (typeof _corosAny.createClient === 'function') {
+  try { coros = _corosAny.createClient(); } catch(e) { console.warn("COROS createClient error:", e.message); }
+} else {
+  console.warn("COROS no disponible — modulo no reconocido. Exports:", Object.keys(_corosAny));
+}
 
 async function tryRestoreCorosSession() {
   let saved = null;
@@ -252,7 +266,9 @@ app.get("/auth/status", (_req, res) => res.json({ loggedIn: garminLoggedIn }));
 app.post("/auth/logout", (_req, res) => { garminLoggedIn = false; res.json({ ok: true }); });
 
 // ── COROS auth ────────────────────────────────────────────────────────────────
+const COROS_NA = { error: "COROS no disponible — modulo no compatible con este entorno" };
 app.post("/coros/login", async (req, res) => {
+  if (!coros) return res.status(503).json(COROS_NA);
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: "Email y contraseña requeridos" });
   try {
@@ -267,10 +283,11 @@ app.post("/coros/login", async (req, res) => {
   }
 });
 
-app.get("/coros/status", (_req, res) => res.json({ loggedIn: corosLoggedIn }));
+app.get("/coros/status", (_req, res) => res.json({ loggedIn: corosLoggedIn, available: !!coros }));
 app.post("/coros/logout", (_req, res) => { corosLoggedIn = false; res.json({ ok: true }); });
 
 app.get("/coros/activities", async (req, res) => {
+  if (!coros) return res.status(503).json(COROS_NA);
   if (!corosLoggedIn) return res.status(401).json({ error: "No autenticado en COROS" });
   try {
     const limit = parseInt(req.query.limit) || 10;
@@ -294,7 +311,7 @@ app.get("/coros/activities", async (req, res) => {
 });
 
 app.get("/coros/session-export", (_req, res) => {
-  if (!corosLoggedIn) return res.status(404).json({ error: "No hay sesion de COROS activa" });
+  if (!coros || !corosLoggedIn) return res.status(404).json({ error: "No hay sesion de COROS activa" });
   const tokenData = coros.getToken ? coros.getToken() : (coros.token || {});
   res.json({ COROS_TOKEN_JSON: JSON.stringify({ ...tokenData, savedAt: new Date().toISOString() }) });
 });
