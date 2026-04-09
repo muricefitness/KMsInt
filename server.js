@@ -54,19 +54,25 @@ let garminLoggedIn = false;
 
 // Intenta restaurar sesión guardada sin hacer login
 async function tryRestoreGarminSession() {
-  if (!existsSync(GARMIN_SESSION_FILE)) return false;
+  let saved = null;
+  // Prioridad: variable de entorno (persiste entre redeploys en Railway)
+  if (process.env.GARMIN_SESSION_JSON) {
+    try { saved = JSON.parse(process.env.GARMIN_SESSION_JSON); } catch {}
+  }
+  // Fallback: archivo en disco (local)
+  if (!saved && existsSync(GARMIN_SESSION_FILE)) {
+    try { saved = JSON.parse(readFileSync(GARMIN_SESSION_FILE, "utf8")); } catch {}
+  }
+  if (!saved) return false;
   try {
-    const saved = JSON.parse(readFileSync(GARMIN_SESSION_FILE, "utf8"));
-    // Inyectar tokens guardados directamente en el cliente
     if (saved.oauth1Token) garmin.client.oauth1Token = saved.oauth1Token;
     if (saved.oauth2Token) garmin.client.oauth2Token = saved.oauth2Token;
-    // Verificar que la sesión sigue válida con una llamada ligera
     await garmin.getUserProfile();
     garminLoggedIn = true;
-    console.log("✅ Sesión Garmin restaurada desde disco");
+    console.log("Sesion Garmin restaurada");
     return true;
   } catch {
-    console.log("ℹ️  Sesión Garmin expirada, requiere nuevo login");
+    console.log("Sesion Garmin expirada, requiere nuevo login");
     return false;
   }
 }
@@ -145,6 +151,17 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", garminLoggedIn, stravaConnected: !!stravaToken, time: new Date().toISOString() });
 });
 
+// ── Exportar sesión Garmin (para copiarlo a Railway Variables) ───────────────
+app.get("/garmin/session-export", (_req, res) => {
+  if (!garminLoggedIn) return res.status(404).json({ error: "No hay sesion de Garmin activa" });
+  const sessionData = {
+    oauth1Token: garmin.client.oauth1Token,
+    oauth2Token: garmin.client.oauth2Token,
+    savedAt: new Date().toISOString(),
+  };
+  res.json({ GARMIN_SESSION_JSON: JSON.stringify(sessionData) });
+});
+
 // ── Exportar token de Strava (para copiarlo a Railway Variables) ──────────────
 app.get("/strava/token-export", (_req, res) => {
   if (!stravaToken) return res.status(404).json({ error: "No hay token de Strava" });
@@ -175,8 +192,17 @@ app.post("/auth/login", async (req, res) => {
     try { const p = await garmin.getUserProfile(); displayName = p?.displayName || p?.userName || email; } catch {}
     res.json({ ok: true, displayName });
   } catch (err) {
-    garminLoggedIn = false;
     console.error("Garmin login error:", err.message);
+    // Si tenemos tokens a pesar del error (bug de libreria con 429 post-login),
+    // la sesion es valida — guardar y responder OK
+    const hasTokens = garmin.client?.oauth1Token || garmin.client?.oauth2Token;
+    if (hasTokens) {
+      garminLoggedIn = true;
+      saveGarminSession();
+      console.log("Sesion Garmin valida a pesar del error:", err.message);
+      return res.json({ ok: true, displayName: email });
+    }
+    garminLoggedIn = false;
     let msg = "Error de autenticación con Garmin Connect";
     if (err.message?.toLowerCase().includes("429")) msg = "Demasiados intentos. Espera 30 minutos.";
     else if (err.message?.toLowerCase().includes("invalid")) msg = "Credenciales incorrectas";
