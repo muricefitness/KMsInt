@@ -12,6 +12,8 @@ import express from "express";
 import cors from "cors";
 import _garminPkg from "@gooin/garmin-connect";
 const { GarminConnect } = _garminPkg;
+import _corosPkg from "coros-connect";
+const CorosConnect = _corosPkg.default || _corosPkg;
 import Anthropic from "@anthropic-ai/sdk";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
@@ -90,6 +92,43 @@ function saveGarminSession() {
 // Restaurar sesión al arrancar
 tryRestoreGarminSession();
 
+// ── COROS client ──────────────────────────────────────────────────────────────
+const COROS_TOKEN_FILE = join(__dirname, ".coros_token.json");
+const coros = new CorosConnect();
+let corosLoggedIn = false;
+
+async function tryRestoreCorosSession() {
+  let saved = null;
+  if (process.env.COROS_TOKEN_JSON) {
+    try { saved = JSON.parse(process.env.COROS_TOKEN_JSON); } catch {}
+  }
+  if (!saved && existsSync(COROS_TOKEN_FILE)) {
+    try { saved = JSON.parse(readFileSync(COROS_TOKEN_FILE, "utf8")); } catch {}
+  }
+  if (!saved) return false;
+  try {
+    if (coros.loadToken) coros.loadToken(saved);
+    else if (coros.token !== undefined) coros.token = saved.token || saved;
+    // Verificar con llamada ligera
+    await coros.getActivityList({ size: 1, pageNumber: 1 });
+    corosLoggedIn = true;
+    console.log("Sesion COROS restaurada");
+    return true;
+  } catch {
+    console.log("Sesion COROS expirada, requiere nuevo login");
+    return false;
+  }
+}
+
+function saveCorosSession() {
+  try {
+    const tokenData = coros.getToken ? coros.getToken() : (coros.token || {});
+    writeFileSync(COROS_TOKEN_FILE, JSON.stringify({ ...tokenData, savedAt: new Date().toISOString() }, null, 2));
+  } catch {}
+}
+
+tryRestoreCorosSession();
+
 // ── Anthropic client ──────────────────────────────────────────────────────────
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || "" });
 
@@ -148,7 +187,7 @@ async function refreshStravaToken() {
 
 // ── Health ────────────────────────────────────────────────────────────────────
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok", garminLoggedIn, stravaConnected: !!stravaToken, time: new Date().toISOString() });
+  res.json({ status: "ok", garminLoggedIn, corosLoggedIn, stravaConnected: !!stravaToken, time: new Date().toISOString() });
 });
 
 // ── Exportar sesión Garmin (para copiarlo a Railway Variables) ───────────────
@@ -211,6 +250,54 @@ app.post("/auth/login", async (req, res) => {
 });
 app.get("/auth/status", (_req, res) => res.json({ loggedIn: garminLoggedIn }));
 app.post("/auth/logout", (_req, res) => { garminLoggedIn = false; res.json({ ok: true }); });
+
+// ── COROS auth ────────────────────────────────────────────────────────────────
+app.post("/coros/login", async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: "Email y contraseña requeridos" });
+  try {
+    await coros.login(email, password);
+    corosLoggedIn = true;
+    saveCorosSession();
+    res.json({ ok: true, displayName: email });
+  } catch (err) {
+    console.error("COROS login error:", err.message);
+    corosLoggedIn = false;
+    res.status(401).json({ error: err.message || "Error de autenticación con COROS" });
+  }
+});
+
+app.get("/coros/status", (_req, res) => res.json({ loggedIn: corosLoggedIn }));
+app.post("/coros/logout", (_req, res) => { corosLoggedIn = false; res.json({ ok: true }); });
+
+app.get("/coros/activities", async (req, res) => {
+  if (!corosLoggedIn) return res.status(401).json({ error: "No autenticado en COROS" });
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const data = await coros.getActivityList({ size: limit, pageNumber: 1 });
+    const list = data?.data?.dataList || data?.dataList || [];
+    const activities = list.map(a => ({
+      activityId: a.labelId || a.activityId || a.id,
+      name: a.name || a.sportType || "Actividad",
+      date: a.startTime ? new Date(a.startTime * 1000).toLocaleDateString("es-ES", { day:"2-digit", month:"short", year:"numeric" }) : "—",
+      dateRaw: a.startTime ? new Date(a.startTime * 1000).toISOString() : null,
+      distanceKm: a.distance ? (a.distance / 100000).toFixed(2) : null,
+      durationFormatted: a.totalTime ? `${Math.floor(a.totalTime/3600)}h ${Math.floor((a.totalTime%3600)/60)}m` : "—",
+      avgHr: a.avgHr || null,
+      avgPace: a.avgSpeed ? speedToPace(a.avgSpeed / 1000) : null,
+      source: "coros",
+    }));
+    res.json({ activities });
+  } catch (err) {
+    res.status(500).json({ error: "Error al obtener actividades de COROS: " + err.message });
+  }
+});
+
+app.get("/coros/session-export", (_req, res) => {
+  if (!corosLoggedIn) return res.status(404).json({ error: "No hay sesion de COROS activa" });
+  const tokenData = coros.getToken ? coros.getToken() : (coros.token || {});
+  res.json({ COROS_TOKEN_JSON: JSON.stringify({ ...tokenData, savedAt: new Date().toISOString() }) });
+});
 
 
 // ── Actividades del año completo ──────────────────────────────────────────────
