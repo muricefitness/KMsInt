@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Training Analyzer</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 :root {
   --bg:#0e0f11; --s1:#16181c; --s2:#1e2026; --s3:#252830;
@@ -112,6 +113,19 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 @keyframes blink{0%,80%,100%{opacity:.15}40%{opacity:1}}
 .hidden{display:none!important;}
 
+/* ── Auth overlay ── */
+#auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;}
+#auth-overlay.hidden{display:none!important;}
+.auth-box{background:var(--s1);border:1px solid var(--b1);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:380px;}
+.auth-brand{font-family:var(--mono);font-size:12px;color:var(--green);letter-spacing:.12em;margin-bottom:1.75rem;display:flex;align-items:center;gap:8px;}
+.auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border-bottom:1px solid var(--b1);}
+.auth-tab{flex:1;padding:8px;text-align:center;font-family:var(--mono);font-size:12px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;}
+.auth-tab.active{color:var(--green);border-bottom-color:var(--green);}
+.auth-role-toggle{display:flex;gap:8px;margin-bottom:12px;}
+.role-btn{flex:1;padding:7px;border-radius:6px;font-size:12px;font-family:var(--mono);cursor:pointer;border:1px solid var(--b1);background:transparent;color:var(--muted);transition:all .15s;}
+.role-btn.active{border-color:var(--green);color:var(--green);background:rgba(200,240,96,.08);}
+#auth-user-badge{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--s2);border-radius:6px;margin-top:auto;border-top:1px solid var(--b1);padding-top:1rem;}
+
 /* Selected activity highlight */
 .act-row.selected{background:var(--s3);margin:0 -1.25rem;padding:10px 1.25rem;border-left:2px solid var(--green);}
 
@@ -119,6 +133,45 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </style>
 </head>
 <body>
+
+<!-- ── Auth overlay ──────────────────────────────────────────────────────── -->
+<div id="auth-overlay">
+  <div class="auth-box">
+    <div class="auth-brand"><div class="brand-dot"></div>TRAINING ANALYZER</div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Iniciar sesión</div>
+      <div class="auth-tab" id="tab-register" onclick="switchAuthTab('register')">Registrarse</div>
+    </div>
+
+    <!-- Login form -->
+    <div id="auth-login-form">
+      <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="auth-password" placeholder="••••••••" /></div>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button class="btn btn-green" style="width:100%;" onclick="doLogin()">Entrar →</button>
+      </div>
+    </div>
+
+    <!-- Register form -->
+    <div id="auth-register-form" class="hidden">
+      <div class="field"><label>Nombre</label><input type="text" id="auth-name" placeholder="Tu nombre" /></div>
+      <div class="field"><label>Email</label><input type="email" id="auth-email2" placeholder="tu@email.com" /></div>
+      <div class="field"><label>Contraseña</label><input type="password" id="auth-password2" placeholder="mínimo 6 caracteres" /></div>
+      <div class="field"><label>Rol</label>
+        <div class="auth-role-toggle">
+          <button class="role-btn active" id="role-athlete" onclick="selectRole('athlete')">Deportista</button>
+          <button class="role-btn" id="role-coach" onclick="selectRole('coach')">Entrenador</button>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:1.25rem;">
+        <button class="btn btn-green" style="width:100%;" onclick="doRegister()">Crear cuenta →</button>
+      </div>
+    </div>
+
+    <div id="auth-msg" class="hidden" style="margin-top:12px;"></div>
+  </div>
+</div>
+
 <div class="layout">
 
 <!-- Sidebar -->
@@ -143,6 +196,13 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
     <div class="status-row"><div class="dot" id="dot-garmin"></div><span id="txt-garmin">Garmin: desconectado</span></div>
     <div class="status-row"><div class="dot" id="dot-coros"></div><span id="txt-coros">COROS: desconectado</span></div>
     <div class="status-row"><div class="dot" id="dot-strava"></div><span id="txt-strava">Strava: desconectado</span></div>
+    <div id="auth-user-badge" class="hidden">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-family:var(--mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="user-display-name">—</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--mono);" id="user-role-label"></div>
+      </div>
+      <button class="btn" style="padding:4px 8px;font-size:11px;" onclick="doLogout()">salir</button>
+    </div>
   </div>
 </aside>
 
@@ -392,6 +452,96 @@ body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:1
 </div>
 
 <script>
+// ── Supabase ──────────────────────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://bhlxgulygosgmyawfzpd.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_A-D_LS8OrGP6DAu0hnXx_Q_g3hmFoOU';
+const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let _currentSession = null;
+
+// Patch global fetch to inject JWT on backend calls
+const _rawFetch = window.fetch.bind(window);
+window.fetch = async function(url, opts = {}) {
+  const urlStr = String(url);
+  if (_currentSession?.access_token && (urlStr.startsWith(BASE) || urlStr.startsWith('/'))) {
+    opts = { ...opts, headers: { ...(opts.headers || {}), 'Authorization': `Bearer ${_currentSession.access_token}` } };
+  }
+  return _rawFetch(url, opts);
+};
+
+// ── Auth UI helpers ───────────────────────────────────────────────────────────
+let _authRole = 'athlete';
+function switchAuthTab(tab) {
+  $('tab-login').classList.toggle('active', tab === 'login');
+  $('tab-register').classList.toggle('active', tab === 'register');
+  $('auth-login-form').classList.toggle('hidden', tab !== 'login');
+  $('auth-register-form').classList.toggle('hidden', tab !== 'register');
+  $('auth-msg').classList.add('hidden');
+}
+function selectRole(role) {
+  _authRole = role;
+  $('role-athlete').classList.toggle('active', role === 'athlete');
+  $('role-coach').classList.toggle('active', role === 'coach');
+}
+function showAuthMsg(msg, isErr) {
+  const el = $('auth-msg');
+  el.className = 'msg ' + (isErr ? 'err' : 'ok');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+}
+
+async function doLogin() {
+  const email = $('auth-email').value.trim();
+  const pass  = $('auth-password').value;
+  if (!email || !pass) { showAuthMsg('Introduce email y contraseña.', true); return; }
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Entrando...';
+  const { data, error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+  btn.disabled = false; btn.textContent = 'Entrar →';
+  if (error) { showAuthMsg(error.message, true); return; }
+  onSessionReady(data.session);
+}
+
+async function doRegister() {
+  const name  = $('auth-name').value.trim();
+  const email = $('auth-email2').value.trim();
+  const pass  = $('auth-password2').value;
+  if (!name || !email || !pass) { showAuthMsg('Completa todos los campos.', true); return; }
+  const btn = event.target; btn.disabled = true; btn.textContent = 'Creando cuenta...';
+  const { data, error } = await _supabase.auth.signUp({
+    email, password: pass,
+    options: { data: { display_name: name, role: _authRole } }
+  });
+  btn.disabled = false; btn.textContent = 'Crear cuenta →';
+  if (error) { showAuthMsg(error.message, true); return; }
+  if (!data.session) { showAuthMsg('Cuenta creada. Revisa tu email para confirmar.', false); return; }
+  onSessionReady(data.session);
+}
+
+async function doLogout() {
+  await _supabase.auth.signOut();
+  _currentSession = null;
+  $('auth-overlay').classList.remove('hidden');
+  $('auth-user-badge').classList.add('hidden');
+}
+
+function onSessionReady(session) {
+  _currentSession = session;
+  $('auth-overlay').classList.add('hidden');
+  $('auth-user-badge').classList.remove('hidden');
+
+  // Fetch profile to get display_name and role
+  fetch(`${BASE}/me`).then(r => r.json()).then(profile => {
+    $('user-display-name').textContent = profile.display_name || session.user.email;
+    $('user-role-label').textContent = profile.role === 'coach' ? 'entrenador' : 'deportista';
+  }).catch(() => {
+    $('user-display-name').textContent = session.user.email;
+    $('user-role-label').textContent = 'usuario';
+  });
+  checkStatus();
+  loadTodayPlan();
+}
+
+// ── Auto-detect backend URL ───────────────────────────────────────────────────
 // Auto-detect backend URL
 const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? `http://localhost:3001`
@@ -421,15 +571,22 @@ function showMsg(id, msg, isErr) {
 
 // ── Status ──────────────────────────────────────────────────────────────────
 async function checkStatus() {
+  if (!_currentSession) return; // no consultar hasta tener sesión
   try {
-    const r = await fetch(`${BASE}/health`);
-    const d = await r.json();
-    $('dot-garmin').className = 'dot' + (d.garminLoggedIn ? ' on' : '');
-    $('txt-garmin').textContent = 'Garmin: ' + (d.garminLoggedIn ? 'conectado' : 'desconectado');
-    $('dot-coros').className = 'dot' + (d.corosLoggedIn ? ' on' : '');
-    $('txt-coros').textContent = 'COROS: ' + (d.corosLoggedIn ? 'conectado' : 'desconectado');
-    $('dot-strava').className = 'dot' + (d.stravaConnected ? ' on' : '');
-    $('txt-strava').textContent = 'Strava: ' + (d.stravaConnected ? 'conectado' : 'desconectado');
+    const [rg, rc, rs] = await Promise.allSettled([
+      fetch(`${BASE}/auth/status`).then(r => r.json()),
+      fetch(`${BASE}/coros/status`).then(r => r.json()),
+      fetch(`${BASE}/strava/status`).then(r => r.json()),
+    ]);
+    const garmin = rg.status === 'fulfilled' ? rg.value : {};
+    const coros  = rc.status === 'fulfilled' ? rc.value : {};
+    const strava = rs.status === 'fulfilled' ? rs.value : {};
+    $('dot-garmin').className = 'dot' + (garmin.loggedIn ? ' on' : '');
+    $('txt-garmin').textContent = 'Garmin: ' + (garmin.loggedIn ? 'conectado' : 'desconectado');
+    $('dot-coros').className = 'dot' + (coros.loggedIn ? ' on' : '');
+    $('txt-coros').textContent = 'COROS: ' + (coros.loggedIn ? 'conectado' : 'desconectado');
+    $('dot-strava').className = 'dot' + (strava.connected ? ' on' : '');
+    $('txt-strava').textContent = 'Strava: ' + (strava.connected ? 'conectado' : 'desconectado');
   } catch {}
 }
 
@@ -941,9 +1098,19 @@ async function saveApiKey() {
 }
 
 // ── Init ─────────────────────────────────────────────────────────────────────
-checkStatus();
+(async () => {
+  const { data: { session } } = await _supabase.auth.getSession();
+  if (session) {
+    onSessionReady(session);
+  } else {
+    $('auth-overlay').classList.remove('hidden');
+  }
+  // Listen for auth changes (e.g. token refresh)
+  _supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) { _currentSession = session; }
+  });
+})();
 setInterval(checkStatus, 30000);
-loadTodayPlan();
 </script>
 </body>
 </html>
